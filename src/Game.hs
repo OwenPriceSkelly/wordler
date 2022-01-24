@@ -2,9 +2,9 @@
 module Game where
 
 import Control.Monad (guard)
-import Data.Char ( Char, toLower, toUpper )
+import Data.Char (Char, toLower, toUpper)
 import Data.List (sortOn)
-import System.Random ( randomRIO )
+import System.Random (randomRIO)
 import Prelude hiding (Right)
 
 data GameState = GameState
@@ -78,8 +78,9 @@ possibleGames ws = [GameState s ws emptyGuess | s <- ws]
   where
     emptyGuess = Wrong ' ' <$ [1 .. 5]
 
--- | "guesses" the given word for each game in games and sums the respective
--- post-guess wordbank sizes. This might not end up being the best measure but
--- seems like a reasonable place to start.
-score :: String -> [GameState] -> Int
-score word = sum . map (length . wordbank . prune . guess word)
+-- | "guesses" the given word for each game and sums the respective
+-- post-guess wordbank sizes.
+score :: [GameState] -> String -> (String, Int)
+score games word = (word, sum $ map f games)
+  where
+    f = length . wordbank . prune . guess word
