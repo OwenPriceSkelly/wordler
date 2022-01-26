@@ -2,7 +2,7 @@
 module Solver where
 
 import Control.Parallel.Strategies (Eval, rpar, runEval)
-import Game (possibleGames, score)
+import Game (possibleGames, score, score')
 
 -- | If `map` turns a function and a list into a list of
 -- thunks, `pmap` turns the same into a list of "sparks";
@@ -18,8 +18,11 @@ pmap f (x : xs) = do
   sparks <- pmap f xs
   return (spark : sparks)
 
--- | follows the sudoku solver example to
+-- | follows the sudoku solver example
 solve :: [String] -> [(String, Int)]
 solve ws = runEval $ pmap (score games) ws
   where
     games = possibleGames ws
+
+solve' :: [String] -> [(String, Int)]
+solve' wordbank = runEval $ pmap (score' wordbank) wordbank

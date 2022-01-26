@@ -1,6 +1,9 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- | responsible for the wordle clone's game logic
 module Game where
 
+import Control.Applicative (liftA2)
 import Control.Monad (guard)
 import Data.Char (Char, toLower, toUpper)
 import Data.List (sortOn)
@@ -43,9 +46,7 @@ randomGameState = do
 -- | update GameState per the guessed word and gamestate's solution
 guess :: String -> GameState -> GameState
 guess word gs =
-  if word `elem` wordbank gs
-    then gs {guessed = zipWith3 f (solution gs) word (guessed gs)}
-    else gs
+  gs {guessed = zipWith3 f (solution gs) word (guessed gs)}
   where
     f s g (Right c) = Right c
     f s g _
@@ -84,3 +85,42 @@ score :: [GameState] -> String -> (String, Int)
 score games word = (word, sum $ map f games)
   where
     f = length . wordbank . prune . guess word
+
+score' :: [String] -> String -> (String, Int)
+score' wordbank guess = (guess, length $ prune' wordbank guess)
+
+-- | rewritten prune that just operates on the wordbank directly and composes
+-- the predicates in a way that is (maybe) a little more efficient.
+prune' :: [String] -> String -> [String]
+prune' wordbank guess = do
+  sol <- wordbank
+  let cs = sortOn snd $ zip [0 ..] (cells guess sol)
+      preds = mkPred <$> cs
+      plausible = and . sequence preds -- nts: this works because (-> b) is a monad instance
+  guard (plausible sol)
+  return sol
+  where
+    (<&&>) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
+    (<&&>) = liftA2 (&&)
+
+    mkPred :: (Int, Cell) -> String -> Bool
+    mkPred (idx, Right ch) = \w -> (w !! idx) == ch
+    mkPred (_, Misplaced ch) = \w -> ch `elem` w
+    mkPred (_, Wrong ch) = \w -> ch `notElem` w
+
+
+-- let cs = cells guess <$> wordbank in wordbank
+
+-- | builds the hypothetical 5-cell "signature" that you'd get by guessing
+-- `guess` in a game that had solution `sol`
+cells :: String -> String -> [Cell]
+cells guess sol = zipWith f sol guess
+  where
+    f :: Char -> Char -> Cell
+    f s c
+      | s == c = Right c
+      | c `elem` sol = Misplaced c
+      | otherwise = Wrong c
+
+isDud :: [Cell] -> Bool
+isDud = all (\case Wrong _ -> True; _ -> False)
